@@ -1,0 +1,14 @@
+{
+    "list1.txt": {
+        "path": "./temp/list1.txt",
+        "type": "blacklist"
+    },
+    "list2.txt": {
+        "path": "./temp/list2.txt",
+        "type": "whitelist"
+    },
+    "list3.txt": {
+        "path": "./temp/list3.txt",
+        "type": "blacklist"
+    }
+}

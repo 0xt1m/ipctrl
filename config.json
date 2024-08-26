@@ -1,0 +1,13 @@
+{
+    "debug": true,
+    "virustotal_api_key": "9c7a0260fa5aa4f3fd21fee8efa8d5c12d78c63900fd52f3431a74f846a2a545",
+    "ipregistry_api_key": "r58hgeafseja7nv5",
+    "splunk": {
+        "api_token": "token",
+        "host": "splunk.organization.org"
+    },
+    "lists_config_filepath": "./temp/lists.json",
+    "access_log_filepath": "./temp/log.txt",
+    "recently_added_ips_filepath": "./lists/recently-added-ips.json",
+    "last_50_lines_filepath": "./lists/last-50-lines.json"
+}

@@ -1,0 +1,38 @@
+{
+    "ip-blacklist.txt": {
+        "path": "/var/www/html/cyberfeeds/ip-blacklist.txt",
+        "type": "blacklist"
+    },
+    "dns_blacklist.txt": {
+        "path": "/var/www/html/cyberfeeds/dns-blacklist.txt",
+        "type": "blacklist"
+    },
+    "mine.txt": {
+        "path": "/var/www/html/cyberfeeds/mine.txt",
+        "type": "blacklist"
+    },
+    "ip-services-whitelist.txt": {
+        "path": "/var/www/html/cyberfeeds/ip-services-whitelist.txt",
+        "type": "whitelist"
+    },
+    "ip-meraki-whitelist.txt": {
+        "path": "/var/www/html/cyberfeeds/ip-meraki-whitelist.txt",
+        "type": "whitelist"
+    },
+    "ip-ark-whitelist.txt": {
+        "path": "/var/www/html/cyberfeeds/ip-ark-whitelist.txt",
+        "type": "whitelist"
+    },
+    "ip-bg-whitelist.txt": {
+        "path": "/var/www/html/cyberfeeds/ip-bg-whitelist.txt",
+        "type": "whitelist"
+    },
+    "ip-sp-whitelist.txt": {
+        "path": "/var/www/html/cyberfeeds/ip-sp-whitelist.txt",
+        "type": "whitelist"
+    },
+    "ip-zscaler-hub-whitelist.txt": {
+        "path": "/var/www/html/cyberfeeds/ip-zscaler-hub-whitelist.txt",
+        "type": "whitelist"
+    }
+}

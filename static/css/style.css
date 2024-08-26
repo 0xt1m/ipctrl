@@ -1,0 +1,256 @@
+.main-title {
+    text-align: left;
+}
+
+.lists {
+    height: 500px;
+    max-width: 300px;
+}
+
+.list-display {
+    margin-top: 10px;
+    height: 400px;
+    background-color: white;
+}
+
+
+.screenshot {
+    overflow: scroll;
+}
+
+.tab {
+    height: 500px;
+}
+
+.rt-logs {
+    height: 300px;
+}
+
+.card-footer {
+    height: 100px;
+    text-align: center;
+}
+
+.text-white { 
+    color: white;
+}
+
+.text-black {
+    color: black;
+}
+
+.first-row {
+    height: 300px;
+}
+
+#alert-container {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.alert {
+    animation: slideIn 0.5s forwards;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+
+.tabs {
+    display: flex;
+}
+
+
+.bgphenet {
+    height: 400px;
+}
+
+.bgphenet table th, td {
+    border: solid white 2px;
+}
+
+
+.bgp-btn-col {
+    max-width: 150px;
+}
+
+.bgp-info-col {
+    overflow: scroll;
+    max-height: 400px;
+}
+
+.dnshead {
+    font-weight: bold;
+}
+
+
+.comment {
+    display: inline;
+    opacity: 0.3;
+    font-size: 12px;
+}
+
+.recently-reported-ips-block {
+    max-height: 300px;
+    max-width: 400px;
+    overflow: scroll;
+}
+
+.recently-reported-ips {
+    text-align: center;
+}
+
+
+.abuseipdb {
+    height: 400px;
+    overflow: scroll;
+}
+
+.label.label-default {
+    background-color: rgb(224, 224, 224);
+    border-radius: 5px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.ip-lookup-form {
+    height: 50px;
+}
+
+#ip-lookup-input {
+    font-size: 20px;
+}
+
+.input-end-btn {
+    height: 100%;
+    border-radius: 0 10px 10px 0;
+}
+
+.add-ip-form {
+    margin-top: 10px;
+}
+
+.tab-buttons-container {
+    margin-top: 10px;
+}
+
+.tab-contents-container {
+    max-height: 500px;
+    margin-top: 10px;
+    overflow: scroll;
+}
+
+.ip-btn {
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.remove-ip-btn {
+    float: right;
+    height: 25px;
+    font-size: 10px;
+    opacity: 0;
+    transition: opacity 100ms;
+}
+
+.ip-btn:hover .remove-ip-btn {
+    opacity: 1;
+}
+
+.report-lists {
+    margin-top: 20px;
+}
+
+.report-lists.col {
+    max-height: 300px;
+    overflow-y: scroll;
+}
+
+.recently-added-ips {
+    max-width: 300px;
+}
+
+.recently-added-ips .list-group-item {
+    font-size: 14px;
+    height: 35px;
+}
+
+#recently-added-ips {
+    max-height: 175px;
+    overflow-y: scroll;
+}
+
+#map-location {
+    width: 100%;
+    height: 400px;
+}
+
+.card-body {
+    max-height: 300px;
+    overflow: auto;
+}
+
+.card {
+    flex: 1 1 calc(50% - 1rem);
+    margin: 0.5rem;
+}
+
+.card-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.number-container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.number-box {
+    border-radius: 5px;
+    background-color: white;
+    color: black;
+    padding: 10px;
+    margin: 5px;
+    text-align: center;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+}
+
+.splunk-content table {
+	border: none;
+    width: 100%;
+}
+
+.splunk-content table td {
+	/* border: solid white 1px; */
+	padding: 10px;
+}
