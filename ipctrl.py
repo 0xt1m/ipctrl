@@ -100,10 +100,21 @@ def find_in_list(ip, listname):
 def find_private_ips(ips):
     private_ips = []
     for ip in ips:
-        if ip.startswith("172.16."):
+        bare_ip = ip.split("/")[0] if "/" in ip else ip
+        if (bare_ip.startswith("10.") or
+            bare_ip.startswith("192.168.") or
+            bare_ip.startswith("127.") or
+            _is_172_private(bare_ip)):
             private_ips.append(ip)
 
     return private_ips
+
+def _is_172_private(ip):
+    if ip.startswith("172."):
+        parts = ip.split(".")
+        if len(parts) >= 2 and parts[1].isdigit():
+            return 16 <= int(parts[1]) <= 31
+    return False
 
 def find_existing_ips(ips):
     lists = get_lists_dict()
@@ -162,7 +173,7 @@ def validate_input_value(value):
     return bool(re.match("^[a-zA-Z0-9./*-]+[a-zA-Z0-9.\/]$", value))
 
 def is_ip(ip):
-    ip_pattern = r'^\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}$'
+    ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
 
     if "/" in ip:
         ip = ip.split('/')[0]

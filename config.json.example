@@ -1,0 +1,13 @@
+{
+    "debug": true,
+    "virustotal_api_key": "YOUR_VIRUSTOTAL_API_KEY",
+    "ipregistry_api_key": "YOUR_IPREGISTRY_API_KEY",
+    "splunk": {
+        "api_token": "YOUR_SPLUNK_TOKEN",
+        "host": "splunk.organization.org"
+    },
+    "lists_config_filepath": "./temp/lists.json",
+    "access_log_filepath": "./temp/log.txt",
+    "recently_added_ips_filepath": "./lists/recently-added-ips.json",
+    "last_50_lines_filepath": "./lists/last-50-lines.json"
+}

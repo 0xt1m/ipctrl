@@ -1,17 +1,19 @@
+import os
 import ipctrl
 import virustotal_api, bgphenet, abuseipdb, ipregistry, shodan, sitecheck, splunk
 import recently_added_ips as rai
 
+import re
 import socket
 import json
-import hashlib
 
-from flask import Flask, request, render_template, redirect, jsonify, send_file, url_for, request
+import bcrypt
+from flask import Flask, request, render_template, redirect, jsonify, send_file, url_for
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.secret_key = 'Wave.Page0.Truck'
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'change-me-in-production')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -23,7 +25,7 @@ login_manager.login_view = 'login'
 
 class User(db.Model, UserMixin):
     id = db.Column(db.String(80), primary_key=True)
-    password = db.Column(db.String(32), nullable=False)  # MD5 is 32 characters long
+    password = db.Column(db.String(60), nullable=False)
 
 
 @login_manager.user_loader
@@ -31,13 +33,12 @@ def load_user(user_id):
     return User.query.get(user_id)
 
 def hash_password(password):
-    return hashlib.md5(password.encode()).hexdigest()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(stored_password, provided_password):
-    return stored_password == hash_password(provided_password)
+    return bcrypt.checkpw(provided_password.encode(), stored_password.encode())
 
 
-# What I do in the beginning
 @app.route('/')
 @login_required
 def home():
@@ -55,10 +56,10 @@ def login():
             login_user(user)
             return redirect(url_for('home'))
         else:
-            return 'Invalid credentials'
-    
+            return 'Invalid credentials', 401
+
     return render_template('login.html')
-        
+
 
 @app.route('/logout')
 @login_required
@@ -67,34 +68,35 @@ def logout():
     return redirect(url_for('login'))
 
 
-# Get Black and White lists
 @app.route('/_get_lists', methods=['POST'])
+@login_required
 def get_lists():
     try:
         lists = {
             "blacklists": ipctrl.get_blacklists(),
             "whitelists": ipctrl.get_whitelists()
         }
-        
+
         return jsonify({
             "status_code": 200,
             "lists": lists
         })
-    except:
+    except Exception:
         return jsonify({
             "status_code": 400,
             "info": "Failed to get lists"
         })
 
 
-
-# Handle list request
 @app.route('/_get_list', methods=['POST'])
+@login_required
 def get_list():
-    if request.is_json:
-        data = request.get_json()
-        list_name = data.get('listName')
-    
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
+
+    data = request.get_json()
+    list_name = data.get('listName')
+
     if ipctrl.list_name_check(list_name):
         try:
             list_content = ipctrl.get_list(list_name)
@@ -103,26 +105,28 @@ def get_list():
                 "list_content": list_content,
                 "list_name": list_name
             }
-        except:
+        except Exception:
             return {
                 "status_code": 500,
                 "info": "Error getting list content",
                 "list_name": list_name
             }
     else:
-        return { 
+        return {
             "status_code": 400,
             "info": "Didn't find selected lists",
             "list_name": list_name
         }
-    
 
-# Hostname resolution
+
 @app.route('/_get_hostname', methods=['POST'])
+@login_required
 def get_hostname():
-    if request.is_json:
-        data = request.get_json()
-        ip = data.get('ip')
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
+
+    data = request.get_json()
+    ip = data.get('ip')
 
     try:
         hostname, alias, addresslist = socket.gethostbyaddr(ip)
@@ -131,54 +135,55 @@ def get_hostname():
             "hostname": hostname
         }
 
-    except socket.herror as e:
+    except socket.herror:
         return {
             "status_code": 404,
             "ip": ip
         }
-    
 
-# Handle actions
+
 @app.route('/_add_ips', methods=['POST'])
 @login_required
 def add_ip():
-    if request.is_json:
-        data = request.get_json()
-        ips = data.get('ips')
-        list_name = data.get('listName')
-    
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
+
+    data = request.get_json()
+    ips = data.get('ips')
+    list_name = data.get('listName')
+
     invalid_ips = ipctrl.find_invalid_ips(ips)
     existing_ips = ipctrl.find_existing_ips(ips)
     private_ips = ipctrl.find_private_ips(ips)
-    
+
     if existing_ips:
         return {
             "status_code": 400,
             "info": "existingIps",
             "existingIps": existing_ips
         }
-    
+
     elif invalid_ips:
         return {
             "status_code": 400,
             "info": "invalidIps",
             "invalidIps": invalid_ips
         }
-    
+
     elif private_ips:
         return {
             "status_code": 400,
             "info": "privateIps",
             "privateIps": private_ips
         }
-    
-    elif not existing_ips and not private_ips:    
+
+    else:
         try:
             ipctrl.add_ips(ips, list_name)
             return {
                 "status_code": 200
             }
-        except:
+        except Exception:
             return {
                 "status_code": 500,
                 "info": "Error adding IP"
@@ -188,12 +193,14 @@ def add_ip():
 @app.route('/_remove_ips', methods=['POST'])
 @login_required
 def remove_ips():
-    if request.is_json:
-        data = request.get_json()
-        ips = data.get('ips')
-        list_name = data.get('listName')
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
 
-    missing_ips = ipctrl.find_missing_ips(ips, list_name)  
+    data = request.get_json()
+    ips = data.get('ips')
+    list_name = data.get('listName')
+
+    missing_ips = ipctrl.find_missing_ips(ips, list_name)
     if missing_ips:
         return {
             "status_code": 404,
@@ -208,24 +215,25 @@ def remove_ips():
             "ips": ips,
             "listName": list_name
         }
-    except:
+    except Exception:
         return {
             "status_code": 500,
             "info": "Error removing IP",
             "ips": ips,
             "listName": list_name
         }
-    
+
 
 @app.route('/_virustotal_scan', methods=['POST'])
 @login_required
 def virustotal_scan():
-    if request.is_json:
-        data = request.get_json()
-        ip = data.get('ipAddress')
-    
-    # Check whether it gets IP or domain
-    if ipctrl.is_ip(ip): 
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
+
+    data = request.get_json()
+    ip = data.get('ipAddress')
+
+    if ipctrl.is_ip(ip):
         if "/" in ip:
             ip = ip.split("/")[0]
 
@@ -233,152 +241,157 @@ def virustotal_scan():
     else:
         ip = ipctrl.strip_domain(ip)
         virustotal_result = virustotal_api.scan_domain(ip)
-        
+
     return jsonify(virustotal_result)
 
 
 @app.route('/_bgphenet_scan', methods=['POST'])
+@login_required
 def bgphenet_scan():
-    if request.is_json:
-        data = request.get_json()
-        ip = data.get('ipAddress')
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
 
-    response = {
-        "status_code": 400,
-        "info": "bgp.he.net scan was not performed!"
-    }
-    
+    data = request.get_json()
+    ip = data.get('ipAddress')
+
     if ipctrl.is_ip(ip):
         if "/" in ip:
             ip = ip.split("/")[0]
-        
+
         bgphenet_result = bgphenet.scan_ip(ip)
-
-        response.update({
-            "status_code": 200,
-            "bgphenet": bgphenet_result
-        })
-
     else:
         ip = ipctrl.strip_domain(ip)
         bgphenet_result = bgphenet.scan_domain(ip)
-        response.update({
-            "status_code": 200,
-            "bgphenet": bgphenet_result
-        })
 
-    return jsonify(response)
+    return jsonify({
+        "status_code": 200,
+        "bgphenet": bgphenet_result
+    })
 
 
 @app.route('/_abuseipdb_scan', methods=['POST'])
+@login_required
 def abuseipdb_scan():
-    if request.is_json:
-        data = request.get_json()
-        ip = data.get('ipAddress')
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
 
-    abuseipdb_scan = abuseipdb.abuseipdb_scan(ip)
+    data = request.get_json()
+    ip = data.get('ipAddress')
 
-    if abuseipdb_scan["status_code"] == 200:  
+    abuseipdb_result = abuseipdb.abuseipdb_scan(ip)
+
+    if abuseipdb_result["status_code"] == 200:
         return {
             "status_code": 200,
-            "abuseIpDb": abuseipdb_scan
+            "abuseIpDb": abuseipdb_result
         }
     else:
         return {
             "status_code": 400,
             "info": "AbuseIPDB scan failed"
         }
-    
+
 
 @app.route('/_ipregistry_scan', methods=['POST'])
 @login_required
 def ipregistry_scan():
-    if request.is_json:
-        data = request.get_json()
-        ip = data.get('ip_address')
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
 
-    ipregistry_scan = ipregistry.ipregistry_scan(ip)
+    data = request.get_json()
+    ip = data.get('ip_address')
 
-    if ipregistry_scan:
-        if "ip" in ipregistry_scan.keys():
+    ipregistry_result = ipregistry.ipregistry_scan(ip)
+
+    if ipregistry_result:
+        if "ip" in ipregistry_result.keys():
             return {
                 "status_code": 200,
-                "ipregistry": ipregistry_scan
+                "ipregistry": ipregistry_result
             }
-        else: 
+        else:
             return {
                 "status_code": 400,
-                "ipregistry": ipregistry_scan
+                "ipregistry": ipregistry_result
             }
     else:
         return {
             "status_code": 401,
             "message": "You entered a value that does not appear to be a valid domain or IP address"
         }
-    
+
 
 @app.route('/_shodan_scan', methods=['POST'])
+@login_required
 def shodan_scan():
-    if request.is_json:
-        data = request.get_json()
-        ip = data.get('ip_address')
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
 
-    shodan_scan = shodan.shodan_scan(ip)
+    data = request.get_json()
+    ip = data.get('ip_address')
 
-    if shodan_scan:
+    shodan_result = shodan.shodan_scan(ip)
+
+    if shodan_result:
         return {
             "status_code": 200,
-            "open_ports": shodan_scan["open_ports"]
+            "open_ports": shodan_result["open_ports"]
         }
-    
     else:
         return {
             "status_code": 404,
             "message": "Shodan couldn't find it"
         }
-    
+
 
 @app.route('/_sitecheck_scan', methods=['POST'])
+@login_required
 def sitecheck_scan():
-    if request.is_json:
-        data = request.get_json()
-        ip = data.get('ip_address')
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
 
-    sitecheck_scan = sitecheck.sitecheck_scan(ip)
+    data = request.get_json()
+    ip = data.get('ip_address')
 
-    if sitecheck_scan:
+    sitecheck_result = sitecheck.sitecheck_scan(ip)
+
+    if sitecheck_result:
         return {
             "status_code": 200,
-            "sitecheck_content": sitecheck_scan
+            "sitecheck_content": sitecheck_result
         }
     else:
         return {
             "status_code": 400,
             "message": "Could not perform sitecheck scan!"
         }
-    
+
 
 @app.route('/_splunk_scan', methods=['POST'])
 @login_required
 def splunk_scan():
-    if request.is_json:
-        data = request.get_json()
-        ip = data.get('ip_address')
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
+
+    data = request.get_json()
+    ip = data.get('ip_address')
+
+    # Validate IP to prevent Splunk search injection
+    if not ipctrl.validate_input_value(ip):
+        return jsonify({"status_code": 400, "info": "Invalid input"}), 400
 
     fields = ["_time", "dvc_name", "src_ip", "dest_ip", "dest_port", "action", "rule"]
-    splunk_search = 'search index=* ' + ip + ' earliest=-24h@h | head 20 | table ' + ", ".join(fields)
-    splunk_scan = splunk.splunk_scan(splunk_search)
+    sanitized_ip = re.escape(ip)
+    splunk_search = 'search index=* ' + sanitized_ip + ' earliest=-24h@h | head 20 | table ' + ", ".join(fields)
+    splunk_result = splunk.splunk_scan(splunk_search)
 
-    if splunk_scan:
-        response = {
+    if splunk_result:
+        return jsonify({
             "status_code": 200,
-            "splunk_logs": splunk_scan,
+            "splunk_logs": splunk_result,
             "fields": fields,
             "search": splunk_search
-        }
-
-        return jsonify(response)
-    
+        })
     else:
         return jsonify({
             "status_code": 404,
@@ -386,72 +399,74 @@ def splunk_scan():
             "search": splunk_search
         })
 
-    
-@app.route('/_recently_reported_ips', methods=['POST'])
-def recently_reported_ips():
 
-    recently_reported_ips = abuseipdb.get_recently_reported_ips()
+@app.route('/_recently_reported_ips', methods=['POST'])
+@login_required
+def recently_reported_ips():
+    recently_reported = abuseipdb.get_recently_reported_ips()
 
     return {
         "status_code": 200,
-        "recently_reported_ips": recently_reported_ips
+        "recently_reported_ips": recently_reported
     }
 
 
 @app.route('/_log', methods=['POST'])
 @login_required
 def get_log():
-    if request.is_json:
-        data = request.get_json()
-        current_log_size = data
-        try:
-            log = ipctrl.get_access_log(current_log_size)
-            return {
-                "status_code": 200,
-                "log": log
-            }
-        except:
-            return {
-                "status_code": 500,
-                "info": "Error occured while getting access log"
-            }
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
+
+    data = request.get_json()
+    current_log_size = data
+    try:
+        log = ipctrl.get_access_log(current_log_size)
+        return {
+            "status_code": 200,
+            "log": log
+        }
+    except Exception:
+        return {
+            "status_code": 500,
+            "info": "Error occured while getting access log"
+        }
 
 
-# Handle request from the IP form
 @app.route('/_ip_lookup', methods=['POST'])
 @login_required
-def search_ip(): 
-    if request.is_json:
-        data = request.get_json()
-        input_value = data.get('inputValue')
-        
-        if ipctrl.validate_input_value(input_value):
+def search_ip():
+    if not request.is_json:
+        return {"status_code": 400, "info": "Invalid request"}, 400
 
-            try:
-                ip_lookup = ipctrl.ip_lookup(input_value)
+    data = request.get_json()
+    input_value = data.get('inputValue')
 
-                if ip_lookup:
-                    return {
-                        "status_code": 200,
-                        "ipLookup": ip_lookup
-                    }
-                else:
-                    return {
-                        "status_code": 404,
-                        "info": "notFound",
-                        "ip": input_value
-                    }
-            except:
+    if ipctrl.validate_input_value(input_value):
+        try:
+            ip_lookup = ipctrl.ip_lookup(input_value)
+
+            if ip_lookup:
                 return {
-                    "status_code": 500,
-                    "info": "Error searching IP"
+                    "status_code": 200,
+                    "ipLookup": ip_lookup
                 }
-        
-        else:
+            else:
+                return {
+                    "status_code": 404,
+                    "info": "notFound",
+                    "ip": input_value
+                }
+        except Exception:
             return {
-                "status_code": 400,
-                "info": "Injection"
+                "status_code": 500,
+                "info": "Error searching IP"
             }
+
+    else:
+        return {
+            "status_code": 400,
+            "info": "Injection"
+        }
 
 
 @app.route('/_recently_added_ips')
@@ -461,7 +476,7 @@ def get_recently_added_ips():
 
     with open('config.json', "r") as f:
         recently_added_ips_filepath = json.load(f)['recently_added_ips_filepath']
-    
+
     with open(recently_added_ips_filepath) as f:
         recently_added_ips = json.load(f)
 

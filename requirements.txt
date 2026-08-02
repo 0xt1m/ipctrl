@@ -1,0 +1,8 @@
+flask
+flask-login
+flask-sqlalchemy
+requests
+beautifulsoup4
+fake-useragent
+splunk-sdk
+bcrypt

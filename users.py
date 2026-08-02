@@ -1,12 +1,13 @@
 import argparse
-import hashlib
 import sqlite3
 import sys
+
+import bcrypt
 
 USERS_DB_PATH = "./instance/users.db"
 
 def hash_password(password):
-    return hashlib.md5(password.encode()).hexdigest()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def add_user(username, password):
     hashed_password = hash_password(password)

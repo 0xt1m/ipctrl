@@ -4,8 +4,6 @@ import ipctrl
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 
-url = "https://sitecheck.sucuri.net/results/hello.com"
-
 ua = UserAgent()
 
 def sitecheck_scan(ip):
